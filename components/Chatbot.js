@@ -11,7 +11,7 @@ export default function Chatbot() {
       id: 1,
       text: "Hello! How can I help you today?",
       sender: "bot",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     },
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -41,7 +41,7 @@ export default function Chatbot() {
       id: Date.now(),
       text: inputValue,
       sender: "user",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -55,7 +55,7 @@ export default function Chatbot() {
         id: Date.now() + 1,
         text: response,
         sender: "bot",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
@@ -64,7 +64,7 @@ export default function Chatbot() {
         id: Date.now() + 1,
         text: "Sorry, something went wrong. Please try again later.",
         sender: "bot",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -149,9 +149,10 @@ export default function Chatbot() {
               >
                 <p className="text-sm">{message.text}</p>
                 <span className="text-xs opacity-70 mt-1 block">
-                  {message.timestamp.toLocaleTimeString([], {
+                  {new Date(message.timestamp).toLocaleTimeString("en-US", {
                     hour: "2-digit",
                     minute: "2-digit",
+                    hour12: true
                   })}
                 </span>
               </div>
