@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +25,7 @@ export default function LoginPage() {
     }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
@@ -34,23 +37,55 @@ export default function LoginPage() {
       return;
     }
 
-    const adminEmail = "admin@servicepulsehub.com";
-    const adminPassword = "Admin123";
+    try {
+      // sign in with Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
 
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("userEmail", email);
+      const user = userCredential.user;
 
-    if (
-      email.toLowerCase() === adminEmail.toLowerCase() &&
-      password === adminPassword
-    ) {
-      localStorage.setItem("userRole", "admin");
-      router.push("/admin");
-      return;
+      // look up this user's role in Firestore
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        setError("No user profile found for this account.");
+        return;
+      }
+
+      const userData = userSnap.data();
+      const userRole = userData.role || "customer";
+
+      // keep localStorage for now because the rest of your app already uses it
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userEmail", user.email || email);
+      localStorage.setItem("userRole", userRole);
+
+      if (userRole === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      switch (error.code) {
+        case "auth/invalid-credential":
+          setError("Invalid email or password.");
+          break;
+        case "auth/invalid-email":
+          setError("Invalid email address.");
+          break;
+        case "auth/user-disabled":
+          setError("This account has been disabled.");
+          break;
+        default:
+          setError("Unable to sign in. Please try again.");
+      }
     }
-
-    localStorage.setItem("userRole", "customer");
-    router.push("/dashboard");
   }
 
   return (
@@ -108,7 +143,7 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Enter your email"
-                  className="w-full text-black rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-500"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-orange-500"
                   required
                 />
               </div>
@@ -127,7 +162,7 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter your password"
-                  className="w-full text-black rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-orange-500"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-black outline-none transition focus:border-orange-500"
                   required
                 />
               </div>
@@ -146,13 +181,17 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-              <p className="font-semibold text-slate-800">Admin Access</p>
-              <p>Email: admin@servicepulsehub.com</p>
-              <p>Password: Admin123</p>
+            <div className="mt-6 text-center text-sm text-slate-600">
+              <span>Don't have an account? </span>
+              <Link
+                href="/register"
+                className="font-semibold text-orange-600 hover:underline"
+              >
+                Sign Up
+              </Link>
             </div>
 
-            <div className="mt-6 text-center text-sm text-slate-600">
+            <div className="mt-3 text-center text-sm text-slate-600">
               <span>Return to site </span>
               <Link
                 href="/"
