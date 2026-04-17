@@ -1,50 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCustomers } from "@/lib/services/customerService";
+import { getServices } from "@/lib/services/serviceService";
 
 export default function AdminDashboard() {
   const router = useRouter();
 
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    const userRole = localStorage.getItem("userRole");
-
-    if (!isLoggedIn || userRole !== "admin") {
-      router.push("/login");
-    }
-  }, [router]);
-
-  const stats = [
-    { title: "Total Customers", value: 15, color: "bg-blue-500" },
-    { title: "Active Accounts", value: 12, color: "bg-green-500" },
-    { title: "Suspended Accounts", value: 3, color: "bg-red-500" },
-    { title: "Available Services", value: 10, color: "bg-purple-500" },
-  ];
-
-  const recentActivity = [
-    {
-      id: 1,
-      text: "John Doe account information was updated",
-      time: "Today, 9:20 AM",
-    },
-    {
-      id: 2,
-      text: "Battery Replacement service was added",
-      time: "Today, 10:45 AM",
-    },
-    {
-      id: 3,
-      text: "Sarah Parker account was suspended",
-      time: "Yesterday, 4:15 PM",
-    },
-    {
-      id: 4,
-      text: "Screen Repair pricing was updated",
-      time: "Yesterday, 2:30 PM",
-    },
-  ];
+  const [stats, setStats] = useState([
+    { title: "Total Customers", value: 0, color: "bg-blue-500" },
+    { title: "Active Accounts", value: 0, color: "bg-green-500" },
+    { title: "Suspended Accounts", value: 0, color: "bg-red-500" },
+    { title: "Available Services", value: 0, color: "bg-purple-500" },
+  ]);
 
   const quickLinks = [
     {
@@ -70,112 +40,116 @@ export default function AdminDashboard() {
     },
   ];
 
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const userRole = localStorage.getItem("userRole");
+
+    if (!isLoggedIn || userRole !== "admin") {
+      router.push("/login");
+      return;
+    }
+
+    loadDashboardStats();
+  }, [router]);
+
+  async function loadDashboardStats() {
+    try {
+      const customers = await getCustomers();
+      const services = await getServices();
+
+      const activeCount = customers.filter(
+        (customer) => customer.status === "Active",
+      ).length;
+
+      const suspendedCount = customers.filter(
+        (customer) => customer.status === "Suspended",
+      ).length;
+
+      setStats([
+        {
+          title: "Total Customers",
+          value: customers.length,
+          color: "bg-blue-500",
+        },
+        {
+          title: "Active Accounts",
+          value: activeCount,
+          color: "bg-green-500",
+        },
+        {
+          title: "Suspended Accounts",
+          value: suspendedCount,
+          color: "bg-red-500",
+        },
+        {
+          title: "Available Services",
+          value: services.length,
+          color: "bg-purple-500",
+        },
+      ]);
+    } catch (error) {
+      console.error("Error loading dashboard stats:", error);
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">
-                Overview
-              </p>
-              <h1 className="mt-2 text-3xl md:text-4xl font-bold text-slate-900">
-                Dashboard
-              </h1>
-              <p className="mt-2 text-slate-600 text-lg">
-                Monitor customer records, services, appointments, and
-                operational activity.
-              </p>
-            </div>
+    <main className="space-y-6">
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <p className="text-sm font-semibold uppercase tracking-wide text-orange-500">
+          Overview
+        </p>
+        <h1 className="mt-1 text-3xl font-bold text-slate-900">Dashboard</h1>
+        <p className="mt-2 text-slate-600">
+          Monitor customer records, services, appointments, and operational
+          activity.
+        </p>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/admin/customers"
-                className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Manage Customers
-              </Link>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            href="/admin/customers"
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Manage Customers
+          </Link>
+          <Link
+            href="/admin/services"
+            className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-900"
+          >
+            Manage Services
+          </Link>
+        </div>
+      </div>
 
-              <Link
-                href="/admin/services"
-                className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
-              >
-                Manage Services
-              </Link>
-            </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.title} className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className={`mb-3 h-2 rounded-full ${stat.color}`} />
+            <p className="text-sm text-slate-500">{stat.title}</p>
+            <h2 className="mt-2 text-3xl font-bold text-slate-900">
+              {stat.value}
+            </h2>
           </div>
-        </section>
+        ))}
+      </div>
 
-        {/* Stats */}
-        <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.title}
-              className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6"
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-900">Quick Access</h2>
+        <p className="mt-1 text-slate-500">
+          Jump directly into the main admin tools.
+        </p>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {quickLinks.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-xl border border-slate-200 p-5 transition hover:border-orange-300 hover:bg-orange-50"
             >
-              <div className={`mb-4 h-3 w-16 rounded-full ${stat.color}`} />
-              <p className="text-sm font-medium text-slate-500">{stat.title}</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {stat.value}
-              </p>
-            </div>
+              <h3 className="text-lg font-bold text-slate-900">{item.title}</h3>
+              <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+            </Link>
           ))}
-        </section>
-
-        {/* Main Content */}
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          {/* Recent Activity */}
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Recent Activity
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Latest updates across customer and service operations.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <p className="font-medium text-slate-800">{activity.text}</p>
-                  <p className="mt-1 text-sm text-slate-500">{activity.time}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Access */}
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
-            <h2 className="text-xl font-bold text-slate-900">Quick Access</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Jump directly into the main admin tools.
-            </p>
-
-            <div className="mt-6 grid gap-4">
-              {quickLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:bg-slate-100"
-                >
-                  <p className="text-sm font-semibold text-slate-900">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {item.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+        </div>
       </div>
     </main>
   );

@@ -1,99 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-
-const initialCustomers = [
-  {
-    id: 1001,
-    firstName: "John",
-    lastName: "Doe",
-    phone: "403-555-1001",
-    email: "john@example.com",
-    status: "Active",
-  },
-  {
-    id: 1002,
-    firstName: "Jane",
-    lastName: "Smith",
-    phone: "403-555-1002",
-    email: "jane@example.com",
-    status: "Active",
-  },
-  {
-    id: 1003,
-    firstName: "Mike",
-    lastName: "Johnson",
-    phone: "403-555-1003",
-    email: "mike@example.com",
-    status: "Suspended",
-  },
-  {
-    id: 1004,
-    firstName: "Sarah",
-    lastName: "Williams",
-    phone: "403-555-1004",
-    email: "sarah@example.com",
-    status: "Active",
-  },
-  {
-    id: 1005,
-    firstName: "Tom",
-    lastName: "Brown",
-    phone: "403-555-1005",
-    email: "tom@example.com",
-    status: "Active",
-  },
-  {
-    id: 1006,
-    firstName: "Emily",
-    lastName: "Parker",
-    phone: "403-555-1006",
-    email: "emily@example.com",
-    status: "Suspended",
-  },
-  {
-    id: 1007,
-    firstName: "Liam",
-    lastName: "Taylor",
-    phone: "403-555-1007",
-    email: "liam@example.com",
-    status: "Active",
-  },
-  {
-    id: 1008,
-    firstName: "Olivia",
-    lastName: "Martin",
-    phone: "403-555-1008",
-    email: "olivia@example.com",
-    status: "Active",
-  },
-  {
-    id: 1009,
-    firstName: "Noah",
-    lastName: "Anderson",
-    phone: "403-555-1009",
-    email: "noah@example.com",
-    status: "Active",
-  },
-  {
-    id: 1010,
-    firstName: "Ava",
-    lastName: "Thomas",
-    phone: "403-555-1010",
-    email: "ava@example.com",
-    status: "Active",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import {
+  addCustomer,
+  deleteCustomer,
+  getCustomers,
+  toggleCustomerStatus,
+  updateCustomer,
+} from "@/lib/services/customerService";
 
 export default function AdminCustomers() {
-  const [customers, setCustomers] = useState(initialCustomers);
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState(
-    initialCustomers[0].id,
-  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -102,16 +25,37 @@ export default function AdminCustomers() {
     email: "",
   });
 
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  async function loadCustomers() {
+    try {
+      setLoading(true);
+      const data = await getCustomers();
+      setCustomers(data);
+
+      if (data.length > 0 && !selectedCustomerId) {
+        setSelectedCustomerId(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error loading customers:", error);
+      alert("Failed to load customers.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
       const fullName =
-        `${customer.firstName} ${customer.lastName}`.toLowerCase();
+        `${customer.firstName || ""} ${customer.lastName || ""}`.toLowerCase();
       const term = searchTerm.toLowerCase();
 
       return (
         fullName.includes(term) ||
-        customer.email.toLowerCase().includes(term) ||
-        customer.phone.includes(searchTerm) ||
+        (customer.email || "").toLowerCase().includes(term) ||
+        (customer.phone || "").includes(searchTerm) ||
         String(customer.id).includes(searchTerm)
       );
     });
@@ -137,7 +81,6 @@ export default function AdminCustomers() {
 
   function handleFormChange(e) {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -157,7 +100,7 @@ export default function AdminCustomers() {
 
     const emailExists = customers.some(
       (customer) =>
-        customer.email.toLowerCase() === formData.email.trim().toLowerCase() &&
+        customer.email?.toLowerCase() === formData.email.trim().toLowerCase() &&
         customer.id !== editingId,
     );
 
@@ -175,54 +118,57 @@ export default function AdminCustomers() {
     setShowModal(true);
   }
 
-  function handleAddCustomer() {
+  async function handleAddCustomer() {
     if (!validateCustomer()) return;
 
-    const newCustomer = {
-      id: Date.now(),
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      phone: formData.phone.trim(),
-      email: formData.email.trim(),
-      status: "Active",
-    };
+    try {
+      const newId = await addCustomer({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        status: "Active",
+      });
 
-    setCustomers((prev) => [newCustomer, ...prev]);
-    setSelectedCustomerId(newCustomer.id);
-    closeModal();
+      await loadCustomers();
+      setSelectedCustomerId(newId);
+      closeModal();
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      alert("Failed to add customer.");
+    }
   }
 
   function handleStartEdit(customer) {
     setEditingId(customer.id);
     setSelectedCustomerId(customer.id);
     setFormData({
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      phone: customer.phone,
-      email: customer.email,
+      firstName: customer.firstName || "",
+      lastName: customer.lastName || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
     });
     setShowModal(true);
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (!validateCustomer()) return;
 
-    setCustomers((prev) =>
-      prev.map((customer) =>
-        customer.id === editingId
-          ? {
-              ...customer,
-              firstName: formData.firstName.trim(),
-              lastName: formData.lastName.trim(),
-              phone: formData.phone.trim(),
-              email: formData.email.trim(),
-            }
-          : customer,
-      ),
-    );
+    try {
+      await updateCustomer(editingId, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        status: selectedCustomer?.status || "Active",
+      });
 
-    setSelectedCustomerId(editingId);
-    closeModal();
+      await loadCustomers();
+      closeModal();
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      alert("Failed to update customer.");
+    }
   }
 
   function handleSubmitCustomer() {
@@ -233,36 +179,36 @@ export default function AdminCustomers() {
     }
   }
 
-  function handleDeleteCustomer(id) {
+  async function handleDeleteCustomer(id) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this customer?",
     );
     if (!confirmed) return;
 
-    const remaining = customers.filter((customer) => customer.id !== id);
-    setCustomers(remaining);
+    try {
+      await deleteCustomer(id);
+      await loadCustomers();
 
-    if (remaining.length === 0) {
-      setSelectedCustomerId(null);
-      return;
-    }
-
-    if (selectedCustomerId === id) {
-      setSelectedCustomerId(remaining[0].id);
+      const remaining = customers.filter((customer) => customer.id !== id);
+      if (remaining.length > 0) {
+        setSelectedCustomerId(remaining[0].id);
+      } else {
+        setSelectedCustomerId(null);
+      }
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      alert("Failed to delete customer.");
     }
   }
 
-  function handleToggleStatus(id) {
-    setCustomers((prev) =>
-      prev.map((customer) =>
-        customer.id === id
-          ? {
-              ...customer,
-              status: customer.status === "Active" ? "Suspended" : "Active",
-            }
-          : customer,
-      ),
-    );
+  async function handleToggleStatus(id, currentStatus) {
+    try {
+      await toggleCustomerStatus(id, currentStatus);
+      await loadCustomers();
+    } catch (error) {
+      console.error("Error toggling customer status:", error);
+      alert("Failed to update customer status.");
+    }
   }
 
   const totalCustomers = customers.length;
@@ -274,234 +220,207 @@ export default function AdminCustomers() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">
-                Administration
-              </p>
-              <h1 className="mt-2 text-3xl md:text-4xl font-bold text-slate-900">
-                Customers
-              </h1>
-              <p className="mt-2 text-slate-600 text-lg">
-                Search, add, edit, remove, and manage customer accounts.
-              </p>
-            </div>
+    <main className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-orange-500">
+            Administration
+          </p>
+          <h1 className="text-3xl font-bold text-slate-900">Customers</h1>
+          <p className="mt-2 text-slate-600">
+            Search, add, edit, remove, and manage customer accounts.
+          </p>
+        </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/admin"
-                className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Back to Dashboard
-              </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/admin"
+            className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100"
+          >
+            Back to Dashboard
+          </Link>
 
-              <button
-                onClick={openAddModal}
-                className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
-              >
-                Add Customer
-              </button>
-            </div>
-          </div>
-        </section>
+          <button
+            onClick={openAddModal}
+            className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Add Customer
+          </button>
+        </div>
+      </div>
 
-        {/* Stats */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <p className="text-sm font-medium text-slate-500">
-              Total Customers
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Total Customers</p>
+          <h2 className="mt-2 text-3xl font-bold text-red-700">
+            {totalCustomers}
+          </h2>
+        </div>
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Active</p>
+          <h2 className="mt-2 text-3xl font-bold text-green-600">
+            {activeCustomers}
+          </h2>
+        </div>
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-500">Suspended</p>
+          <h2 className="mt-2 text-3xl font-bold text-red-600">
+            {suspendedCustomers}
+          </h2>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-slate-900">Customer List</h2>
+            <p className="text-sm text-slate-500">
+              Showing {filteredCustomers.length} customer
+              {filteredCustomers.length !== 1 ? "s" : ""}
             </p>
-            <h2 className="mt-2 text-3xl font-bold text-slate-900">
-              {totalCustomers}
-            </h2>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <p className="text-sm font-medium text-slate-500">Active</p>
-            <h2 className="mt-2 text-3xl font-bold text-green-600">
-              {activeCustomers}
-            </h2>
-          </div>
+          <input
+            type="text"
+            placeholder="Search by name, email, phone, or ID"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-orange-500 text-black"
+          />
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <p className="text-sm font-medium text-slate-500">Suspended</p>
-            <h2 className="mt-2 text-3xl font-bold text-red-600">
-              {suspendedCustomers}
-            </h2>
-          </div>
-        </section>
-
-        {/* Main Content */}
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          {/* Customer List */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Customer List
-                </h2>
-                <p className="text-slate-600 mt-1">
-                  Showing {filteredCustomers.length} customer
-                  {filteredCustomers.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-
-              <input
-                type="text"
-                placeholder="Search by name, email, phone, or ID"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent md:max-w-sm"
-              />
-            </div>
-
-            <div className="space-y-3">
-              {filteredCustomers.length > 0 ? (
-                filteredCustomers.map((customer) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => setSelectedCustomerId(customer.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition ${
-                      selectedCustomerId === customer.id
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
+          <div className="max-h-[520px] space-y-3 overflow-y-auto">
+            {loading ? (
+              <p className="text-slate-500">Loading customers...</p>
+            ) : filteredCustomers.length > 0 ? (
+              filteredCustomers.map((customer) => (
+                <button
+                  key={customer.id}
+                  onClick={() => setSelectedCustomerId(customer.id)}
+                  className={`w-full rounded-xl border p-4 text-left transition ${
+                    selectedCustomerId === customer.id
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <p className="font-semibold text-slate-900">
+                    {customer.firstName} {customer.lastName}
+                  </p>
+                  <p className="text-sm text-slate-500">{customer.email}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    ID: {customer.id}
+                  </p>
+                  <span
+                    className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                      customer.status === "Active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
                     }`}
                   >
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          {customer.firstName} {customer.lastName}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          {customer.email}
-                        </p>
-                        <p className="text-sm text-slate-500 mt-1">
-                          ID: {customer.id}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                          customer.status === "Active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {customer.status}
-                      </span>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500">
-                  No customers found.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Customer Details */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-xl font-bold text-slate-900">
-              Customer Details
-            </h2>
-
-            {selectedCustomer ? (
-              <div className="mt-5 space-y-4">
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Customer ID</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.id}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">First Name</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.firstName}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Last Name</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.lastName}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Phone</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.phone}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Email</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.email}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-sm text-slate-500">Account Status</p>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    {selectedCustomer.status}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 pt-2">
-                  <button
-                    onClick={() => handleStartEdit(selectedCustomer)}
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                  >
-                    Edit Customer
-                  </button>
-
-                  <button
-                    onClick={() => handleToggleStatus(selectedCustomer.id)}
-                    className={`rounded-lg px-4 py-3 text-sm font-semibold text-white transition ${
-                      selectedCustomer.status === "Active"
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-green-600 hover:bg-green-700"
-                    }`}
-                  >
-                    {selectedCustomer.status === "Active"
-                      ? "Suspend Customer"
-                      : "Activate Customer"}
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteCustomer(selectedCustomer.id)}
-                    className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900"
-                  >
-                    Delete Customer
-                  </button>
-                </div>
-              </div>
+                    {customer.status}
+                  </span>
+                </button>
+              ))
             ) : (
-              <div className="mt-5 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500">
-                Select a customer to view details.
-              </div>
+              <p className="text-slate-500">No customers found.</p>
             )}
           </div>
         </section>
+
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-xl font-bold text-slate-900">
+            Customer Details
+          </h2>
+
+          {selectedCustomer ? (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-slate-500">Customer ID</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Account Status</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.status}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">First Name</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.firstName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Last Name</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.lastName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Phone</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.phone}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Email</p>
+                  <p className="font-semibold text-slate-900">
+                    {selectedCustomer.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => handleStartEdit(selectedCustomer)}
+                  className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Edit Customer
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleToggleStatus(
+                      selectedCustomer.id,
+                      selectedCustomer.status,
+                    )
+                  }
+                  className={`rounded-lg px-4 py-3 text-sm font-semibold text-white ${
+                    selectedCustomer.status === "Active"
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  {selectedCustomer.status === "Active"
+                    ? "Suspend Customer"
+                    : "Activate Customer"}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteCustomer(selectedCustomer.id)}
+                  className="rounded-lg bg-slate-800 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-900"
+                >
+                  Delete Customer
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-500">Select a customer to view details.</p>
+          )}
+        </section>
       </div>
 
-      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">
                   {editingId ? "Edit Customer" : "Add New Customer"}
                 </h2>
-                <p className="mt-1 text-slate-600 text-sm">
+                <p className="text-slate-500">
                   {editingId
                     ? "Update the selected customer details."
                     : "Enter customer details below."}
@@ -510,82 +429,76 @@ export default function AdminCustomers() {
 
               <button
                 onClick={closeModal}
-                className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition"
+                className="rounded-lg px-3 py-2 text-slate-500 hover:bg-slate-100"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    First Name
-                  </label>
-                  <input
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleFormChange}
-                    placeholder="First Name"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Last Name
-                  </label>
-                  <input
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleFormChange}
-                    placeholder="Last Name"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Phone
-                  </label>
-                  <input
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleFormChange}
-                    placeholder="Phone"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                    placeholder="Email"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-black">
+                  First Name
+                </label>
+                <input
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleFormChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 text-black"
+                />
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  onClick={handleSubmitCustomer}
-                  className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
-                >
-                  {editingId ? "Save Changes" : "Add Customer"}
-                </button>
-
-                <button
-                  onClick={closeModal}
-                  className="rounded-lg bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
-                >
-                  Cancel
-                </button>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-black">
+                  Last Name
+                </label>
+                <input
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleFormChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 text-black"
+                />
               </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-black">
+                  Phone
+                </label>
+                <input
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleFormChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 text-black"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-black">
+                  Email
+                </label>
+                <input
+                  name="email"
+                  value={formData.email}
+                  onChange={handleFormChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 text-black"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={handleSubmitCustomer}
+                className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
+              >
+                {editingId ? "Save Changes" : "Add Customer"}
+              </button>
+
+              <button
+                onClick={closeModal}
+                className="rounded-lg bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-300"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
