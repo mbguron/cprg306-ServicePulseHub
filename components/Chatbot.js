@@ -17,11 +17,20 @@ export default function Chatbot() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleStopResponse = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -178,14 +187,32 @@ export default function Chatbot() {
           className="border-t border-gray-200 p-4 bg-white rounded-b-lg"
         >
           <div className="flex gap-2 mb-3">
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Summary
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What is your location?");
+              }}
+            >
+              Location
             </div>
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Contact PM
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What is your contact information?");
+              }}
+            >
+              Contact Information
             </div>
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Export CSV
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What services do you offer?");
+              }}
+            >
+              Services
             </div>
           </div>
           <div className="flex gap-2">
@@ -197,26 +224,26 @@ export default function Chatbot() {
               className="flex-1 px-3 py-2 bg-gray-100 border border-gray-100 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:border-orange-200 focus:ring-1 focus:ring-orange-300 transition-all"
               disabled={isLoading}
             />
-            <button
-              type="submit"
-              disabled={isLoading || !inputValue.trim()}
-              className="px-4 py-2 bg-orange-400 hover:bg-orange-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
-            >
-              {isLoading ? (
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={handleStopResponse}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+              >
                 <svg
-                  className="w-5 h-5 animate-spin"
-                  fill="none"
-                  stroke="currentColor"
+                  className="w-5 h-5"
+                  fill="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
+                  <rect x="6" y="6" width="12" height="12" />
                 </svg>
-              ) : (
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!inputValue.trim()}
+                className="px-4 py-2 bg-orange-400 hover:bg-orange-500 active:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg"
+              >
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -230,8 +257,8 @@ export default function Chatbot() {
                     d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                   />
                 </svg>
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </form>
       </div>
