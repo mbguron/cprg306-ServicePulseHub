@@ -178,14 +178,32 @@ export default function Chatbot() {
           className="border-t border-gray-200 p-4 bg-white rounded-b-lg"
         >
           <div className="flex gap-2 mb-3">
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Summary
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What is your location?");
+              }}
+            >
+              Location
             </div>
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Contact PM
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What is your contact information?");
+              }}
+            >
+              Contact Information
             </div>
-            <div className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer">
-              Export CSV
+            <div
+              type="button"
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-full text-gray-500 cursor-pointer"
+              onClick={() => {
+                setInputValue("What services do you offer?");
+              }}
+            >
+              Services
             </div>
           </div>
           <div className="flex gap-2">
