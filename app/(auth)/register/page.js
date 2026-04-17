@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,7 +24,7 @@ export default function RegisterPage() {
     }));
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
@@ -43,47 +40,12 @@ export default function RegisterPage() {
       return;
     }
 
-    try {
-      // create Firebase Authentication user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
+    // fake signup (since no backend)
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userRole", "customer");
 
-      const user = userCredential.user;
-
-      // create matching Firestore user profile with customer role
-      await setDoc(doc(db, "users", user.uid), {
-        name,
-        email: user.email,
-        role: "customer",
-        createdAt: serverTimestamp(),
-      });
-
-      // keep localStorage for now because the rest of your app already uses it
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userEmail", user.email || email);
-      localStorage.setItem("userRole", "customer");
-
-      router.push("/dashboard");
-    } catch (error) {
-      console.error("Register error:", error);
-
-      switch (error.code) {
-        case "auth/email-already-in-use":
-          setError("That email is already in use.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email address.");
-          break;
-        case "auth/weak-password":
-          setError("Password must be at least 6 characters.");
-          break;
-        default:
-          setError("Unable to create account. Please try again.");
-      }
-    }
+    router.push("/booking");
   }
 
   return (
@@ -107,19 +69,19 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Side */}
-      <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-          <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
             Create Account
           </h2>
 
-          <p className="mb-6 text-center text-sm text-gray-600">
+          <p className="text-gray-600 text-center mb-6 text-sm">
             Sign up to get started
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Full Name
               </label>
               <input
@@ -127,13 +89,13 @@ export default function RegisterPage() {
                 type="text"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="John Doe"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Email Address
               </label>
               <input
@@ -141,13 +103,13 @@ export default function RegisterPage() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="your@email.com"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Password
               </label>
               <input
@@ -155,13 +117,13 @@ export default function RegisterPage() {
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="••••••••"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Confirm Password
               </label>
               <input
@@ -169,30 +131,30 @@ export default function RegisterPage() {
                 type="password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 placeholder="••••••••"
               />
             </div>
 
-            {error && <div className="text-sm text-red-600">{error}</div>}
+            {error && <div className="text-red-600 text-sm">{error}</div>}
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-orange-500 py-2 font-bold text-white transition hover:bg-orange-600"
+              className="w-full bg-orange-500 text-white font-bold py-2 rounded-lg hover:bg-orange-600 transition"
             >
               Sign Up
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-gray-600 mt-6">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-orange-600">
+            <Link href="/login" className="text-orange-600 font-semibold">
               Login
             </Link>
           </p>
 
-          <p className="mt-2 text-center text-sm text-gray-600">
-            <Link href="/" className="font-semibold text-orange-600">
+          <p className="text-center text-sm text-gray-600 mt-2">
+            <Link href="/" className="text-orange-600 font-semibold">
               Back to Home
             </Link>
           </p>
