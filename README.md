@@ -7,10 +7,11 @@ This is a project for the course CPRG-306 Web Development-2.
 *Group: Souldone*
 
 *Group Members*
-Mahabirjaisingh Balbirsingh Guron
-Hoang Phoung Uyen Nguyen
-Hoa Tran
-Hunter Norman
+
+1. Mahabirjaisingh Balbirsingh Guron
+2. Hoang Phoung Uyen Nguyen
+3. Hoa Tran
+4. Hunter Norman
 
 VerceL Deployment [Link](https://cprg306-service-pulse-hub.vercel.app/)
 
