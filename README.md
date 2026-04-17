@@ -1,4 +1,4 @@
-#ServicePulse Hub
+# ServicePulse Hub
 
 This is a project for the course CPRG-306 Web Development-2.
 
