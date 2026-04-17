@@ -28,8 +28,11 @@ export default function LoggedNavBar() {
           FAQs
         </Link>
 
-        <Link href="/login" className="hover:underline font-semibold">
-          Logout
+        <Link
+          href="/dashboard/profile"
+          className="hover:underline font-semibold"
+        >
+          Profile
         </Link>
       </div>
     </nav>
